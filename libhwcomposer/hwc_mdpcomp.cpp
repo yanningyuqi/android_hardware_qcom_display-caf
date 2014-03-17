@@ -384,6 +384,10 @@ bool MDPComp::isFrameDoable(hwc_context_t *ctx, hwc_display_contents_1_t* list)
     if(!isEnabled()) {
         ALOGD_IF(isDebug(),"%s: MDP Comp. not enabled.", __FUNCTION__);
         return false;
+    } else if(ctx->isPaddingRound) {
+        ALOGD_IF(isDebug(), "%s: padding round invoked for dpy %d",
+                 __FUNCTION__,mDpy);
+        return false;
     }
 
     for(int i = 0; i < numAppLayers; ++i) {
@@ -843,15 +847,14 @@ bool MDPComp::programYUV(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
 int MDPComp::prepare(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
 
     const int numLayers = ctx->listStats[mDpy].numAppLayers;
-
+    int ret = 1;
     //reset old data
     mCurrentFrame.reset(numLayers);
 
-    //number of app layers exceeds MAX_NUM_APP_LAYERS fall back to GPU
-    //do not cache the information for next draw cycle.
-    if(numLayers > MAX_NUM_APP_LAYERS) {
+    //Do not cache the information for next draw cycle.
+    if(numLayers > MAX_NUM_APP_LAYERS or (!numLayers)) {
         mCachedFrame.updateCounts(mCurrentFrame);
-        ALOGD_IF(isDebug(), "%s: Number of App layers exceeded the limit ",
+        ALOGD_IF(isDebug(), "%s: Unsupported layer count for mdp composition",
                 __FUNCTION__);
         return -1;
     }
@@ -934,7 +937,8 @@ int MDPComp::prepare(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
             ctx->mOverlay->clear(mDpy);
             ctx->mLayerRotMap[mDpy]->clear();
             return -1;
-        }
+        } else
+            ret = 0;
     } else {
         reset(numLayers, list);
         return -1;
@@ -953,7 +957,7 @@ int MDPComp::prepare(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
         ALOGE("%s",sDump.string());
     }
 
-    return 0;
+    return ret;
 }
 
 //=============MDPCompLowRes===================================================

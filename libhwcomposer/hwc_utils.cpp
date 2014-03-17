@@ -250,7 +250,9 @@ void initContext(hwc_context_t *ctx)
 
     for (uint32_t i = 0; i < HWC_NUM_DISPLAY_TYPES; i++) {
         ctx->mHwcDebug[i] = new HwcDebug(i);
+        ctx->mPrevHwLayerCount[i] = 0;
     }
+
     MDPComp::init(ctx);
 
     ctx->vstate.enable = false;
@@ -1162,9 +1164,8 @@ int hwc_sync(hwc_context_t *ctx, hwc_display_contents_1_t* list, int dpy,
 
     //Accumulate acquireFenceFds for MDP
     for(uint32_t i = 0; i < list->numHwLayers; i++) {
-        if(((list->hwLayers[i].compositionType == HWC_OVERLAY &&
-                        (layerProp[i].mFlags & HWC_MDPCOMP)) ||
-                        list->hwLayers[i].compositionType == HWC_BLIT) &&
+        if((list->hwLayers[i].compositionType == HWC_OVERLAY &&
+                        (layerProp[i].mFlags & HWC_MDPCOMP)) &&
                         list->hwLayers[i].acquireFenceFd >= 0) {
             if(UNLIKELY(swapzero))
                 acquireFd[count++] = -1;
@@ -1207,7 +1208,6 @@ int hwc_sync(hwc_context_t *ctx, hwc_display_contents_1_t* list, int dpy,
     for(uint32_t i = 0; i < list->numHwLayers; i++) {
         if(((list->hwLayers[i].compositionType == HWC_OVERLAY) &&
                 (layerProp[i].mFlags & HWC_MDPCOMP)) ||
-                list->hwLayers[i].compositionType == HWC_BLIT ||
                 list->hwLayers[i].compositionType == HWC_FRAMEBUFFER_TARGET) {
             //Populate releaseFenceFds.
             if(UNLIKELY(swapzero)) {
